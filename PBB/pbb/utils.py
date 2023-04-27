@@ -11,7 +11,6 @@ from tqdm import tqdm, trange
 from .models import NNet4l, CNNet4l, ProbNNet4l, ProbCNNet4l, ProbCNNet9l, CNNet9l, CNNet13l, ProbCNNet13l, ProbCNNet15l, CNNet15l, trainNNet, testNNet, Lambda_var, trainPNNet, computeRiskCertificates, testPosteriorMean, testStochastic, testEnsemble
 from .bounds import PBBobj
 from .data import loaddataset, loadbatches
-from pbb import data
 
 # TODOS: 1. make a train prior function (bbb, erm)
 #        2. make train posterior function 
@@ -120,6 +119,7 @@ perc_prior=0.2, batch_size=250):
     """
 
     # this makes the initialised prior the same for all bounds
+    print('hello noaym')
     torch.manual_seed(7)
     np.random.seed(0)
     torch.backends.cudnn.deterministic = True
@@ -168,6 +168,7 @@ perc_prior=0.2, batch_size=250):
 
     posterior_n_size = len(train_loader.dataset)
     bound_n_size = len(val_bound.dataset)
+    print('hello noaym')
 
     toolarge = False
     train_size = len(train_loader.dataset)
@@ -211,8 +212,10 @@ perc_prior=0.2, batch_size=250):
         lambda_var = None
 
     optimizer = optim.SGD(net.parameters(), lr=learning_rate, momentum=momentum)
+    print('hello noaym')
 
     for epoch in trange(train_epochs):
+        print('hello noaym')
         trainPNNet(net, optimizer, bound, epoch, train_loader, lambda_var, optimizer_lambda, verbose)
         if verbose_test and ((epoch+1) % 5 == 0):
             train_obj, risk_ce, risk_01, kl, loss_ce_train, loss_01_train = computeRiskCertificates(net, toolarge,
