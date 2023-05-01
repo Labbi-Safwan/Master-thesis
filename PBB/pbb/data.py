@@ -24,6 +24,7 @@ def loaddataset(name):
             'mnist-data/', train=True, download=True, transform=transform)
         test = datasets.MNIST(
             'mnist-data/', train=False, download=True, transform=transform)
+
     elif name == 'cifar10':
         transform = transforms.Compose(
             [transforms.ToTensor(),

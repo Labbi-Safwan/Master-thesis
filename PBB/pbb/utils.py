@@ -119,7 +119,6 @@ perc_prior=0.2, batch_size=250):
     """
 
     # this makes the initialised prior the same for all bounds
-    print('hello noaym')
     torch.manual_seed(7)
     np.random.seed(0)
     torch.backends.cudnn.deterministic = True
@@ -150,8 +149,9 @@ perc_prior=0.2, batch_size=250):
         else:
             net0 = CNNet4l(dropout_prob=dropout_prob).to(device)
     else:
-        net0 = NNet4l(dropout_prob=dropout_prob, device=device).to(device)
-
+        net0 = NNet4l(dropout_prob=dropout_prob)
+        net0 = net0.to(device)
+    
     if prior_type == 'rand':
         train_loader, test_loader, _, val_bound_one_batch, _, val_bound = loadbatches(
             train, test, loader_kargs, batch_size, prior=False, perc_train=perc_train, perc_prior=perc_prior)
@@ -168,7 +168,6 @@ perc_prior=0.2, batch_size=250):
 
     posterior_n_size = len(train_loader.dataset)
     bound_n_size = len(val_bound.dataset)
-    print('hello noaym')
 
     toolarge = False
     train_size = len(train_loader.dataset)
@@ -212,10 +211,8 @@ perc_prior=0.2, batch_size=250):
         lambda_var = None
 
     optimizer = optim.SGD(net.parameters(), lr=learning_rate, momentum=momentum)
-    print('hello noaym')
 
     for epoch in trange(train_epochs):
-        print('hello noaym')
         trainPNNet(net, optimizer, bound, epoch, train_loader, lambda_var, optimizer_lambda, verbose)
         if verbose_test and ((epoch+1) % 5 == 0):
             train_obj, risk_ce, risk_01, kl, loss_ce_train, loss_01_train = computeRiskCertificates(net, toolarge,
