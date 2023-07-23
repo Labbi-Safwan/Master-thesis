@@ -1,0 +1,102 @@
+Using model VGG11
+Loading CIFAR10 from /jmain01/home/JAD017/sjr01/dxg49-sjr01/curvature/data/
+Files already downloaded and verified
+Using 5000 samples for validation [deterministic split]
+Files already downloaded and verified
+Using train (45000) + test (5000)
+Loading CIFAR10 from /jmain01/home/JAD017/sjr01/dxg49-sjr01/curvature/data/
+Files already downloaded and verified
+Using 5000 samples for validation [deterministic split]
+Files already downloaded and verified
+Using train (45000) + test (5000)
+Preparing model
+{}
+Loading viewings/checkpoint-00300.pt
+Traceback (most recent call last):
+  File "spectrum.py", line 246, in <module>
+    bn_train_mode=not args.bn_train_mode_off, extensions=kw2ext[args.curvature_matrix])
+  File "/jmain01/home/JAD017/sjr01/dxg49-sjr01/kfac-curvature/curvature/utils.py", line 517, in curv_diag
+    loss.backward()
+  File "/jmain01/home/JAD017/sjr01/dxg49-sjr01/.conda/envs/diegorubin/lib/python3.7/site-packages/torch/tensor.py", line 166, in backward
+    torch.autograd.backward(self, gradient, retain_graph, create_graph)
+  File "/jmain01/home/JAD017/sjr01/dxg49-sjr01/.conda/envs/diegorubin/lib/python3.7/site-packages/torch/autograd/__init__.py", line 99, in backward
+    allow_unreachable=True)  # allow_unreachable flag
+  File "/jmain01/home/JAD017/sjr01/dxg49-sjr01/.conda/envs/diegorubin/lib/python3.7/site-packages/backpack/__init__.py", line 113, in run_extensions
+    backpack_extension.apply(module_, g_inp, g_out)
+  File "/jmain01/home/JAD017/sjr01/dxg49-sjr01/.conda/envs/diegorubin/lib/python3.7/site-packages/backpack/extensions/backprop_extension.py", line 82, in apply
+    module_extension(self, module, g_inp, g_out)
+  File "/jmain01/home/JAD017/sjr01/dxg49-sjr01/.conda/envs/diegorubin/lib/python3.7/site-packages/backpack/extensions/module_extension.py", line 75, in apply
+    ext, module, g_inp, g_out, bpQuantities
+  File "/jmain01/home/JAD017/sjr01/dxg49-sjr01/.conda/envs/diegorubin/lib/python3.7/site-packages/backpack/extensions/secondorder/diag_ggn/conv2d.py", line 20, in weight
+    weight_diag = convUtils.extract_weight_diagonal(module, X, backproped)
+  File "/jmain01/home/JAD017/sjr01/dxg49-sjr01/.conda/envs/diegorubin/lib/python3.7/site-packages/backpack/utils/conv.py", line 63, in extract_weight_diagonal
+    return (AX ** 2).sum([0, 1]).transpose(0, 1)
+RuntimeError: CUDA out of memory. Tried to allocate 11.25 GiB (GPU 0; 15.75 GiB total capacity; 11.69 GiB already allocated; 2.95 GiB free; 39.82 MiB cached)
+Using model VGG11
+Loading CIFAR10 from /jmain01/home/JAD017/sjr01/dxg49-sjr01/curvature/data/
+Files already downloaded and verified
+Using 5000 samples for validation [deterministic split]
+Files already downloaded and verified
+Using train (45000) + test (5000)
+Loading CIFAR10 from /jmain01/home/JAD017/sjr01/dxg49-sjr01/curvature/data/
+Files already downloaded and verified
+Using 5000 samples for validation [deterministic split]
+Files already downloaded and verified
+Using train (45000) + test (5000)
+Preparing model
+{}
+Loading viewings/checkpoint-00300.pt
+Traceback (most recent call last):
+  File "spectrum.py", line 246, in <module>
+    bn_train_mode=not args.bn_train_mode_off, extensions=kw2ext[args.curvature_matrix])
+  File "/jmain01/home/JAD017/sjr01/dxg49-sjr01/kfac-curvature/curvature/utils.py", line 517, in curv_diag
+    loss.backward()
+  File "/jmain01/home/JAD017/sjr01/dxg49-sjr01/.conda/envs/diegorubin/lib/python3.7/site-packages/torch/tensor.py", line 166, in backward
+    torch.autograd.backward(self, gradient, retain_graph, create_graph)
+  File "/jmain01/home/JAD017/sjr01/dxg49-sjr01/.conda/envs/diegorubin/lib/python3.7/site-packages/torch/autograd/__init__.py", line 99, in backward
+    allow_unreachable=True)  # allow_unreachable flag
+  File "/jmain01/home/JAD017/sjr01/dxg49-sjr01/.conda/envs/diegorubin/lib/python3.7/site-packages/backpack/__init__.py", line 113, in run_extensions
+    backpack_extension.apply(module_, g_inp, g_out)
+  File "/jmain01/home/JAD017/sjr01/dxg49-sjr01/.conda/envs/diegorubin/lib/python3.7/site-packages/backpack/extensions/backprop_extension.py", line 82, in apply
+    module_extension(self, module, g_inp, g_out)
+  File "/jmain01/home/JAD017/sjr01/dxg49-sjr01/.conda/envs/diegorubin/lib/python3.7/site-packages/backpack/extensions/module_extension.py", line 75, in apply
+    ext, module, g_inp, g_out, bpQuantities
+  File "/jmain01/home/JAD017/sjr01/dxg49-sjr01/.conda/envs/diegorubin/lib/python3.7/site-packages/backpack/extensions/secondorder/diag_hessian/conv2d.py", line 32, in weight
+    h_diag_curr = convUtils.extract_weight_diagonal(module, X, h_sqrt)
+  File "/jmain01/home/JAD017/sjr01/dxg49-sjr01/.conda/envs/diegorubin/lib/python3.7/site-packages/backpack/utils/conv.py", line 63, in extract_weight_diagonal
+    return (AX ** 2).sum([0, 1]).transpose(0, 1)
+RuntimeError: CUDA out of memory. Tried to allocate 11.25 GiB (GPU 0; 15.75 GiB total capacity; 11.70 GiB already allocated; 2.96 GiB free; 28.82 MiB cached)
+Using model VGG11
+Loading CIFAR10 from /jmain01/home/JAD017/sjr01/dxg49-sjr01/curvature/data/
+Files already downloaded and verified
+Using 5000 samples for validation [deterministic split]
+Files already downloaded and verified
+Using train (45000) + test (5000)
+Loading CIFAR10 from /jmain01/home/JAD017/sjr01/dxg49-sjr01/curvature/data/
+Files already downloaded and verified
+Using 5000 samples for validation [deterministic split]
+Files already downloaded and verified
+Using train (45000) + test (5000)
+Preparing model
+{}
+Loading viewings/checkpoint-00300.pt
+Traceback (most recent call last):
+  File "spectrum.py", line 246, in <module>
+    bn_train_mode=not args.bn_train_mode_off, extensions=kw2ext[args.curvature_matrix])
+  File "/jmain01/home/JAD017/sjr01/dxg49-sjr01/kfac-curvature/curvature/utils.py", line 517, in curv_diag
+    loss.backward()
+  File "/jmain01/home/JAD017/sjr01/dxg49-sjr01/.conda/envs/diegorubin/lib/python3.7/site-packages/torch/tensor.py", line 166, in backward
+    torch.autograd.backward(self, gradient, retain_graph, create_graph)
+  File "/jmain01/home/JAD017/sjr01/dxg49-sjr01/.conda/envs/diegorubin/lib/python3.7/site-packages/torch/autograd/__init__.py", line 99, in backward
+    allow_unreachable=True)  # allow_unreachable flag
+  File "/jmain01/home/JAD017/sjr01/dxg49-sjr01/.conda/envs/diegorubin/lib/python3.7/site-packages/backpack/__init__.py", line 113, in run_extensions
+    backpack_extension.apply(module_, g_inp, g_out)
+  File "/jmain01/home/JAD017/sjr01/dxg49-sjr01/.conda/envs/diegorubin/lib/python3.7/site-packages/backpack/extensions/backprop_extension.py", line 82, in apply
+    module_extension(self, module, g_inp, g_out)
+  File "/jmain01/home/JAD017/sjr01/dxg49-sjr01/.conda/envs/diegorubin/lib/python3.7/site-packages/backpack/extensions/module_extension.py", line 75, in apply
+    ext, module, g_inp, g_out, bpQuantities
+  File "/jmain01/home/JAD017/sjr01/dxg49-sjr01/.conda/envs/diegorubin/lib/python3.7/site-packages/backpack/extensions/secondorder/diag_ggn/conv2d.py", line 20, in weight
+    weight_diag = convUtils.extract_weight_diagonal(module, X, backproped)
+  File "/jmain01/home/JAD017/sjr01/dxg49-sjr01/.conda/envs/diegorubin/lib/python3.7/site-packages/backpack/utils/conv.py", line 63, in extract_weight_diagonal
+    return (AX ** 2).sum([0, 1]).transpose(0, 1)
+RuntimeError: CUDA out of memory. Tried to allocate 11.25 GiB (GPU 0; 15.75 GiB total capacity; 11.69 GiB already allocated; 2.95 GiB free; 39.82 MiB cached)

@@ -1,0 +1,1 @@
+python3 ../hess_landscape_1d.py --dataset=CIFAR100 --data_path=/nfs/home/dgranziol/curvature/data/ --model=PreResNet110 --basis_path=/nfs/home/dgranziol/curvature/ckpts/c100/PreResNet110/SGDOPT/225full --seed=5 --save_path=/nfs/home/dgranziol/curvature/ckpts/c100/PreResNet110/SGDOPT/hess_loss_results-d=0p2.npz --dist=0.2 --use_test

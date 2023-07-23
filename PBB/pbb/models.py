@@ -9,6 +9,19 @@ from torchvision import datasets, transforms
 from torchvision.utils import make_grid
 from tqdm import tqdm, trange
 
+
+def custom_weights(model, parameter):
+    total = 0
+    for layer in model.children():
+        num_parameter_layer = torch.prod(torch.tensor(layer.weight.size()),0)
+        number_bias = torch.tensor(layer.weight.size())[0].item()
+        weight = theta[0][total:total + num_parameter_layer]
+        layer.weight = torch.nn.Parameter(torch.reshape(weight ,list(layer.weight.size())))
+        total += num_parameter_layer
+        bias = torch.nn.Parameter(theta[0][total:total + number_bias])
+        total += number_bias
+    return (model)
+
 def trunc_normal_(tensor, mean=0., std=1., a=-2., b=2.):
     # type: (Tensor, float, float, float, float) -> Tensor
     r"""Fills the input Tensor with values drawn from a truncated
@@ -118,6 +131,54 @@ class Gaussian(nn.Module):
         kl_div = (torch.mul(term1 + term2 + term3 - 1, 0.5)).sum()
         return kl_div
 
+class Gaussian_from_kfac(nn.Module):
+    """Implementation of a Gaussian random variable, using softplus for
+    the standard deviation and with implementation of sampling and KL
+    divergence computation from kfac factorization
+
+    Parameters
+    ----------
+    mu : Tensor of floats
+        Centers of the Gaussian.
+
+    cov : krondecomposition covariace matrix
+        covariance matrix of the  gaussian (to be transformed to std
+        via the softplus function)
+
+    device : string
+        Device the code will run in (e.g. 'cuda')
+
+    fixed : bool
+        Boolean indicating whether the Gaussian is supposed to be fixed
+        or learnt.
+
+    """
+
+    def __init__(self, mu, cov, device='cuda', fixed=False):
+        super().__init__()
+        self.mu = nn.Parameter(mu, requires_grad=not fixed)
+        self.cov = nn.Parameter(cov, requires_grad=not fixed)
+        self.device = device
+
+    def sample(self):
+        # Return a sample from the Gaussian distribution
+        epsilon = torch.randn(self.sigma.size()).to(self.device)
+        return self.mu + self.cov @ epsilon
+
+    def compute_kl(self, other):
+        # Compute KL divergence between two Gaussians (self and other)
+        # (refer to the paper)
+        # b is the variance of priors
+        
+        b1 = torch.pow(self.sigma, 2)
+        b0 = torch.pow(other.sigma, 2)
+
+        term1 = torch.log(torch.div(b0, b1))
+        term2 = torch.div(
+            torch.pow(self.mu - other.mu, 2), b0)
+        term3 = torch.div(b1, b0)
+        kl_div = (torch.mul(term1 + term2 + term3 - 1, 0.5)).sum()
+        return kl_div
 
 class Laplace(nn.Module):
     """Implementation of a Laplace random variable, using softplus for
@@ -545,6 +606,8 @@ class CNNet4l(nn.Module):
         x = self.fc2(x)
         output = F.log_softmax(x, dim=1)
         return output
+    
+    
 
 
 class ProbNNet4l(nn.Module):
@@ -1179,18 +1242,72 @@ def testNNet(net, test_loader, device='cuda', verbose=True):
 
     """
     net.eval()
-    correct, total = 0, 0.0
+    correct, total,loss = 0, 0.0 ,0.0
     with torch.no_grad():
         for data, target in test_loader:
             data, target = data.to(device), target.to(device)
             outputs = net(data)
-            loss = F.nll_loss(outputs, target)
+            loss += F.nll_loss(outputs, target)
             pred = outputs.max(1, keepdim=True)[1]
             correct += pred.eq(target.view_as(pred)).sum().item()
             total += target.size(0)
     print(
         f"-Prior: Test loss: {loss :.5f}, Test err:  {1-(correct/total):.5f}")
     return 1-(correct/total)
+
+def nll_loss_NNet_train_set(net, test_loader, device='cuda', verbose=True):
+    """compute the nll loss for a for a standard NN on the test set (including CNN)
+
+    Parameters
+    ----------
+    net : NNet/CNNet object
+        Network object to train
+
+    train_loader: DataLoader object
+        Train data loader
+
+    device : string
+        Device the code will run in (e.g. 'cuda')
+
+    verbose: bool
+        Whether to print test metrics
+
+    """
+    net.eval()
+    correct, total,loss = 0, 0.0 ,0.0
+    with torch.no_grad():
+        for data, target in train_loader:
+            data, target = data.to(device), target.to(device)
+            outputs = net(data)
+            loss += F.nll_loss(outputs, target)
+    return loss
+
+def nll_loss_NNet_test_set(net, test_loader, device='cuda', verbose=True):
+    """compute the nll loss for a for a standard NN on the test set (including CNN)
+
+    Parameters
+    ----------
+    net : NNet/CNNet object
+        Network object to train
+
+    test_loader: DataLoader object
+        Test data loader
+
+    device : string
+        Device the code will run in (e.g. 'cuda')
+
+    verbose: bool
+        Whether to print test metrics
+
+    """
+    net.eval()
+    correct, total,loss = 0, 0.0 ,0.0
+    with torch.no_grad():
+        for data, target in test_loader:
+            data, target = data.to(device), target.to(device)
+            outputs = net(data)
+            loss += F.nll_loss(outputs, target)
+    return loss
 
 
 def trainPNNet(net, optimizer, pbobj, epoch, train_loader, lambda_var=None, optimizer_lambda=None, verbose=False):

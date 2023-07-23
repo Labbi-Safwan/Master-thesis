@@ -41,7 +41,7 @@ class PBBobj():
 
     """
     def __init__(self, objective='fquad', pmin=1e-4, classes=10, delta=0.025,
-    delta_test=0.01, mc_samples=1000, kl_penalty=1, device='cuda', n_posterior=30000, n_bound=30000):
+    delta_test=0.01, mc_samples=1000, kl_penalty=1, device='cuda', n_posterior=30000, n_bound=30000, net0 = None, H = None, sigma_prior =1, theta = None):
         super().__init__()
         self.objective = objective
         self.pmin = pmin
@@ -53,7 +53,8 @@ class PBBobj():
         self.kl_penalty = kl_penalty
         self.n_posterior = n_posterior
         self.n_bound = n_bound
-
+        self.H = None
+        self.sigma_prior = self.sigma_prior
 
     def compute_empirical_risk(self, outputs, targets, bounded=True):
         # compute negative log likelihood loss and bound it with pmin (if applicable)
@@ -76,7 +77,7 @@ class PBBobj():
         loss_01 = 1-(correct/total)
         return loss_ce, loss_01, outputs
 
-    def bound(self, empirical_risk, kl, train_size, lambda_var=None):
+    def bound(self, empirical_risk, kl=0, train_size, lambda_var=None):
         # compute training objectives
         if self.objective == 'fquad':
             kl = kl * self.kl_penalty
@@ -102,6 +103,17 @@ class PBBobj():
             # ipdb.set_trace()
             train_obj = empirical_risk + \
                 self.kl_penalty * (kl/train_size)
+        elif self.objective == 'practical_bayes_deep':
+            norm = self.theta.norm()
+            eigevalues = H.eigenvalues
+            trace1 = H.eigenvalues[0][0].sum()
+            trace2 = H.eigenvalues[0][1].sum()
+            for index in range (1,len(la.H)):
+                trace1 += H.eigenvalues[index][0].sum()
+            trace = trace1*trace2*len(H)
+            
+            train_obj = train_size * empirical_risk -(1/2) * self.H.logdet()*( 1 + 1/train_size) - 1/(2*(self.sigma_prior**2)* train_size)*(trace + norm)  
+
         else:
             raise RuntimeError(f'Wrong objective {self.objective}')
         return train_obj
