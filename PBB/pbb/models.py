@@ -15,10 +15,10 @@ def custom_weights(model, parameter):
     for layer in model.children():
         num_parameter_layer = torch.prod(torch.tensor(layer.weight.size()),0)
         number_bias = torch.tensor(layer.weight.size())[0].item()
-        weight = theta[0][total:total + num_parameter_layer]
+        weight = parameter[total:total + num_parameter_layer]
         layer.weight = torch.nn.Parameter(torch.reshape(weight ,list(layer.weight.size())))
         total += num_parameter_layer
-        bias = torch.nn.Parameter(theta[0][total:total + number_bias])
+        bias = torch.nn.Parameter(parameter[total:total + number_bias])
         total += number_bias
     return (model)
 
@@ -550,22 +550,21 @@ class NNet4l(nn.Module):
 
     """
 
-    def __init__(self, dropout_prob=0.0, device='cuda'):
+    def __init__(self, dropout_prob, device='cuda'):
         super().__init__()
         self.l1 = Linear(28*28, 600, device)
         self.l2 = Linear(600, 600, device)
         self.l3 = Linear(600, 600, device)
         self.l4 = Linear(600, 10, device)
-        self.d = nn.Dropout(dropout_prob)
 
     def forward(self, x):
         # forward pass for the network
         x = x.view(-1, 28*28)
-        x = self.d(self.l1(x))
+        x = self.l1(x)
         x = F.relu(x)
-        x = self.d(self.l2(x))
+        x = self.l2(x)
         x = F.relu(x)
-        x = self.d(self.l3(x))
+        x = self.l3(x)
         x = F.relu(x)
         x = output_transform(self.l4(x), clamping=False)
         return x
@@ -586,22 +585,21 @@ class CNNet4l(nn.Module):
 
     """
 
-    def __init__(self, dropout_prob):
+    def __init__(self, dropout_prob=0.0):
         super().__init__()
         self.conv1 = nn.Conv2d(1, 32, 3, 1)
         self.conv2 = nn.Conv2d(32, 64, 3, 1)
         self.fc1 = nn.Linear(9216, 128)
         self.fc2 = nn.Linear(128, 10)
-        self.d = nn.Dropout2d(dropout_prob)
 
     def forward(self, x):
-        x = self.d(self.conv1(x))
+        x = self.conv1(x)
         x = F.relu(x)
-        x = self.d(self.conv2(x))
+        x = self.conv2(x)
         x = F.relu(x)
         x = F.max_pool2d(x, 2)
         x = torch.flatten(x, 1)
-        x = self.d(self.fc1(x))
+        x = self.fc1(x)
         x = F.relu(x)
         x = self.fc2(x)
         output = F.log_softmax(x, dim=1)
@@ -736,24 +734,23 @@ class CNNet9l(nn.Module):
         self.fcl1 = nn.Linear(4096, 1024)
         self.fcl2 = nn.Linear(1024, 512)
         self.fcl3 = nn.Linear(512, 10)
-        self.d = nn.Dropout2d(dropout_prob)
 
     def forward(self, x):
         # conv layers
-        x = self.d(F.relu(self.conv1(x)))
-        x = self.d(F.relu(self.conv2(x)))
+        x = F.relu(self.conv1(x))
+        x = F.relu(self.conv2(x))
         x = (F.max_pool2d(x, kernel_size=2, stride=2))
-        x = self.d(F.relu(self.conv3(x)))
-        x = self.d(F.relu(self.conv4(x)))
+        x = F.relu(self.conv3(x))
+        x = F.relu(self.conv4(x))
         x = (F.max_pool2d(x, kernel_size=2, stride=2))
-        x = self.d(F.relu(self.conv5(x)))
-        x = self.d(F.relu(self.conv6(x)))
+        x = F.relu(self.conv5(x))
+        x = F.relu(self.conv6(x))
         x = (F.max_pool2d(x, kernel_size=2, stride=2))
         # flatten
         x = x.view(x.size(0), -1)
         # fc layer
-        x = F.relu(self.d(self.fcl1(x)))
-        x = F.relu(self.d(self.fcl2(x)))
+        x = F.relu(self.fcl1(x))
+        x = F.relu(self.fcl2(x))
         x = self.fcl3(x)
         x = F.log_softmax(x, dim=1)
         return x
@@ -871,29 +868,28 @@ class CNNet13l(nn.Module):
         self.fcl1 = nn.Linear(2048, 1024)
         self.fcl2 = nn.Linear(1024, 512)
         self.fcl3 = nn.Linear(512, 10)
-        self.d = nn.Dropout(dropout_prob)
 
     def forward(self, x):
         # conv layers
-        x = F.relu(self.d(self.conv1(x)))
-        x = F.relu(self.d(self.conv2(x)))
+        x = F.relu(self.conv1(x))
+        x = F.relu(self.conv2(x))
         x = F.max_pool2d(x, kernel_size=2, stride=2)
-        x = F.relu(self.d(self.conv3(x)))
-        x = F.relu(self.d(self.conv4(x)))
+        x = F.relu(self.conv3(x))
+        x = F.relu(self.conv4(x))
         x = F.max_pool2d(x, kernel_size=2, stride=2)
-        x = F.relu(self.d(self.conv5(x)))
-        x = F.relu(self.d(self.conv6(x)))
-        x = F.relu(self.d(self.conv7(x)))
+        x = F.relu(self.conv5(x))
+        x = F.relu(self.conv6(x))
+        x = F.relu(self.conv7(x))
         x = F.max_pool2d(x, kernel_size=2, stride=2)
-        x = F.relu(self.d(self.conv8(x)))
-        x = F.relu(self.d(self.conv9(x)))
-        x = F.relu(self.d(self.conv10(x)))
+        x = F.relu(self.conv8(x))
+        x = F.relu(self.conv9(x))
+        x = F.relu(self.conv10(x))
         x = F.max_pool2d(x, kernel_size=2, stride=2)
         # flatten
         x = x.view(x.size(0), -1)
         # fc layer
-        x = F.relu(self.d(self.fcl1(x)))
-        x = F.relu(self.d(self.fcl2(x)))
+        x = F.relu(self.fcl1(x))
+        x = F.relu(self.fcl2(x))
         x = self.fcl3(x)
         x = F.log_softmax(x, dim=1)
         return x
@@ -1022,31 +1018,30 @@ class CNNet15l(nn.Module):
         self.fcl1 = nn.Linear(2048, 1024)
         self.fcl2 = nn.Linear(1024, 512)
         self.fcl3 = nn.Linear(512, 10)
-        self.d = nn.Dropout(dropout_prob)
 
     def forward(self, x):
         # conv layers
-        x = F.relu(self.d(self.conv1(x)))
-        x = F.relu(self.d(self.conv2(x)))
+        x = F.relu(self.conv1(x))
+        x = F.relu(self.conv2(x))
         x = F.max_pool2d(x, kernel_size=2, stride=2)
-        x = F.relu(self.d(self.conv3(x)))
-        x = F.relu(self.d(self.conv4(x)))
+        x = F.relu(self.conv3(x))
+        x = F.relu(self.conv4(x))
         x = F.max_pool2d(x, kernel_size=2, stride=2)
-        x = F.relu(self.d(self.conv5(x)))
-        x = F.relu(self.d(self.conv6(x)))
-        x = F.relu(self.d(self.conv7(x)))
-        x = F.relu(self.d(self.conv8(x)))
+        x = F.relu(self.conv5(x))
+        x = F.relu(self.conv6(x))
+        x = F.relu(self.conv7(x))
+        x = F.relu(self.conv8(x))
         x = F.max_pool2d(x, kernel_size=2, stride=2)
-        x = F.relu(self.d(self.conv9(x)))
-        x = F.relu(self.d(self.conv10(x)))
-        x = F.relu(self.d(self.conv11(x)))
-        x = F.relu(self.d(self.conv12(x)))
+        x = F.relu(self.conv9(x))
+        x = F.relu(self.conv10(x))
+        x = F.relu(self.conv11(x))
+        x = F.relu(self.conv12(x))
         x = F.max_pool2d(x, kernel_size=2, stride=2)
         # flatten
         x = x.view(x.size(0), -1)
         # fc layer
-        x = F.relu(self.d(self.fcl1(x)))
-        x = F.relu(self.d(self.fcl2(x)))
+        x = F.relu(self.fcl1(x))
+        x = F.relu(self.fcl2(x))
         x = self.fcl3(x)
         x = F.log_softmax(x, dim=1)
         return x

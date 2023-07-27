@@ -54,7 +54,7 @@ class PBBobj():
         self.n_posterior = n_posterior
         self.n_bound = n_bound
         self.H = None
-        self.sigma_prior = self.sigma_prior
+        self.sigma_prior = sigma_prior
 
     def compute_empirical_risk(self, outputs, targets, bounded=True):
         # compute negative log likelihood loss and bound it with pmin (if applicable)
@@ -77,7 +77,7 @@ class PBBobj():
         loss_01 = 1-(correct/total)
         return loss_ce, loss_01, outputs
 
-    def bound(self, empirical_risk, kl=0, train_size, lambda_var=None):
+    def bound(self, empirical_risk, kl, train_size, lambda_var=None):
         # compute training objectives
         if self.objective == 'fquad':
             kl = kl * self.kl_penalty

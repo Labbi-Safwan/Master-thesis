@@ -11,6 +11,9 @@ from tqdm import tqdm, trange
 from .models import NNet4l, CNNet4l, ProbNNet4l, ProbCNNet4l, ProbCNNet9l, CNNet9l, CNNet13l, ProbCNNet13l, ProbCNNet15l, CNNet15l, trainNNet, testNNet, Lambda_var, trainPNNet, computeRiskCertificates, testPosteriorMean, testStochastic, testEnsemble, custom_weights
 from .bounds import PBBobj
 from .data import loaddataset, loadbatches
+from laplace.curvature import AsdlGGN
+from laplace.baselaplace import KronLaplace
+
 
 # TODOS: 1. make a train prior function (bbb, erm)
 #        2. make train posterior function 
@@ -21,8 +24,8 @@ from .data import loaddataset, loadbatches
 
 def runexp(name_data, objective, prior_type, model, sigma_prior, pmin, learning_rate, momentum, 
 learning_rate_prior=0.01, momentum_prior=0.95, delta=0.025, layers=9, delta_test=0.01, mc_samples=1000, 
-samples_ensemble=100, kl_penalty=1, initial_lamb=6.0, train_epochs=100, prior_dist='gaussian', 
-verbose=False, device='cuda', prior_epochs=20, dropout_prob=0.2, perc_train=1.0, verbose_test=False, 
+samples_ensemble=100, kl_penalty=1, initial_lamb=6.0, train_epochs=20, prior_dist='gaussian', 
+verbose=False, device='cuda', prior_epochs=10, dropout_prob=0.2, perc_train=1.0, verbose_test=False, 
 perc_prior=0.2, batch_size=250):
     """Run an experiment with PAC-Bayes inspired training objectives
 
@@ -168,7 +171,10 @@ perc_prior=0.2, batch_size=250):
         errornet0 = testNNet(net0, test_loader, device=device)
         
         
-
+    print(net0.fc1.weight)
+    print(net0.fc2.weight)
+    print(net0.conv1.weight)
+    print(net0.conv2.weight)
     posterior_n_size = len(train_loader.dataset)
     bound_n_size = len(val_bound.dataset)
 
@@ -244,9 +250,8 @@ perc_prior=0.2, batch_size=250):
         backend=AsdlGGN
         la = KronLaplace(net0, 'classification', backend=backend)
         la.fit(train_loader)
-        predictions = la(train_loader)
         theta = la.sample(n_samples = samples_ensemble)
-        new_net = custom_weights(theta[0])
+        new_net = custom_weights(net0, theta[0])
         stch_err = testNNet(new_net, test_loader, device=device)
         stch_loss = nll_loss_NNet_train_set(new_net , test_loader)
         bound = PBBobj(objective, pmin, classes, delta,
