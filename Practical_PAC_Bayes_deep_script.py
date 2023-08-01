@@ -27,6 +27,9 @@ from tqdm import tqdm, trange
 from laplace.baselaplace import KronLaplace
 from laplace.curvature import AsdlGGN
 from PBB.pbb.utils import runexp
+
+"setting the parameters: to be replaced with a parser soon"
+
 DEVICE = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
 print(torch.cuda.is_available())
 
@@ -45,7 +48,6 @@ MOMENTUM = 0.95
 LEARNING_RATE_PRIOR = 0.005
 MOMENTUM_PRIOR = 0.99
 
-# note the number of MC samples used in the paper is 150.000, which usually takes a several hours to compute
 MC_SAMPLES = 1000
 
 runexp('mnist', 'practical_bayes_deep', PRIOR, 'cnn', SIGMAPRIOR, PMIN, LEARNING_RATE, MOMENTUM, LEARNING_RATE_PRIOR, MOMENTUM_PRIOR, delta=DELTA, delta_test=DELTA_TEST, mc_samples=MC_SAMPLES, train_epochs=TRAIN_EPOCHS, device=DEVICE, prior_epochs=5, perc_train=1.0, perc_prior=0.5, verbose=True, dropout_prob=0.2)
