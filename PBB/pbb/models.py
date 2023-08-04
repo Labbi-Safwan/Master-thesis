@@ -605,7 +605,40 @@ class CNNet4l(nn.Module):
         output = F.log_softmax(x, dim=1)
         return output
     
-    
+class CNNet4l_no_activation(nn.Module):
+    """Implementation of a standard Convolutional Neural Network with 4 layers with no activation function at the end
+    (used for the experiments on MNIST so it assumes a specific input size and
+    number of classes)
+
+    Parameters
+    ----------
+    dropout_prob : float
+        probability of an element to be zeroed.
+
+    device : string
+        Device the code will run in (e.g. 'cuda')
+
+    """
+
+    def __init__(self):
+        super().__init__()
+        self.conv1 = nn.Conv2d(1, 32, 3, 1)
+        self.conv2 = nn.Conv2d(32, 64, 3, 1)
+        self.fc1 = nn.Linear(9216, 128)
+        self.fc2 = nn.Linear(128, 10)
+
+    def forward(self, x):
+        x = self.conv1(x)
+        x = F.relu(x)
+        x = self.conv2(x)
+        x = F.relu(x)
+        x = F.max_pool2d(x, 2)
+        x = torch.flatten(x, 1)
+        x = self.fc1(x)
+        x = F.relu(x)
+        x = self.fc2(x)
+        return x
+        
 
 
 class ProbNNet4l(nn.Module):
@@ -1173,6 +1206,50 @@ def output_transform(x, clamping=True, pmin=1e-4):
         output = torch.clamp(output, np.log(pmin))
     return output
 
+def trainNNet_cross_entropy(net, optimizer, epoch, train_loader, device='cuda', verbose=False):
+    """Train function for a standard NN (including CNN)
+
+    Parameters
+    ----------
+    net : NNet/CNNet object
+        Network object to train
+
+    optimizer : optim object
+        Optimizer to use (e.g. SGD/Adam)
+
+    epoch : int
+        Current training epoch
+
+    train_loader: DataLoader object
+        Train loader to use for training
+
+    device : string
+        Device the code will run in (e.g. 'cuda')
+
+    verbose: bool
+        Whether to print training metrics
+
+    """
+    # train and report training metrics
+    net.train()
+    total, correct, avgloss = 0.0, 0.0, 0.0
+    for batch_id, (data, target) in enumerate(tqdm(train_loader)):
+        data, target = data.to(device), target.to(device)
+        net.zero_grad()
+        output = net(data)
+        loss = F.cross_entropy(output, target)
+        loss.backward()
+        optimizer.step()
+        pred = output.max(1, keepdim=True)[1]
+        correct += pred.eq(target.view_as(pred)).sum().item()
+        total += target.size(0)
+        avgloss = avgloss + loss.detach()
+    # show the average loss and KL during the epoch
+    if verbose:
+        print(
+            f"-Epoch {epoch :.5f}, Train loss: {avgloss/batch_id :.5f}, Train err:  {1-(correct/total):.5f}")
+
+
 
 def trainNNet(net, optimizer, epoch, train_loader, device='cuda', verbose=False):
     """Train function for a standard NN (including CNN)
@@ -1217,6 +1294,39 @@ def trainNNet(net, optimizer, epoch, train_loader, device='cuda', verbose=False)
         print(
             f"-Epoch {epoch :.5f}, Train loss: {avgloss/batch_id :.5f}, Train err:  {1-(correct/total):.5f}")
 
+
+        
+def testNNet_cross_entropy(net, test_loader, device='cuda', verbose=True):
+    """Test function for a standard NN (including CNN)
+
+    Parameters
+    ----------
+    net : NNet/CNNet object
+        Network object to train
+
+    test_loader: DataLoader object
+        Test data loader
+
+    device : string
+        Device the code will run in (e.g. 'cuda')
+
+    verbose: bool
+        Whether to print test metrics
+
+    """
+    net.eval()
+    correct, total,loss = 0, 0.0 ,0.0
+    with torch.no_grad():
+        for data, target in test_loader:
+            data, target = data.to(device), target.to(device)
+            outputs = net(data)
+            loss += F.cross_entropy(outputs, target)
+            pred = outputs.max(1, keepdim=True)[1]
+            correct += pred.eq(target.view_as(pred)).sum().item()
+            total += target.size(0)
+    print(
+        f"-Prior: Test loss: {loss :.5f}, Test err:  {1-(correct/total):.5f}")
+    return 1-(correct/total)
 
 def testNNet(net, test_loader, device='cuda', verbose=True):
     """Test function for a standard NN (including CNN)
