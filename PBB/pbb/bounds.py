@@ -41,7 +41,7 @@ class PBBobj():
 
     """
     def __init__(self, objective='fquad', pmin=1e-4, classes=10, delta=0.025,
-    delta_test=0.01, mc_samples=1000, kl_penalty=1, device='cuda', n_posterior=30000, n_bound=30000, net0 = None, H = None, sigma_prior =1, theta = None):
+    delta_test=0.01, mc_samples=1000, kl_penalty=1, device='cuda', n_posterior=30000, n_bound=30000, net0 = None, H = None, sigma_prior =1, theta = None, laplace = None):
         super().__init__()
         self.objective = objective
         self.pmin = pmin
@@ -53,7 +53,7 @@ class PBBobj():
         self.kl_penalty = kl_penalty
         self.n_posterior = n_posterior
         self.n_bound = n_bound
-        self.H = None
+        self.laplace =  laplace
         self.sigma_prior = sigma_prior
 
     def compute_empirical_risk(self, outputs, targets, bounded=True):
@@ -61,6 +61,8 @@ class PBBobj():
         empirical_risk = F.nll_loss(outputs, targets)
         if bounded == True:
             empirical_risk = (1./(np.log(1./self.pmin))) * empirical_risk
+        if self.objective == 'loss_curvature_bayes':
+            empirical_risk = F.cross_entropy(outputs, targets)
         return empirical_risk
 
     def compute_losses(self, net, data, target, clamping=True):
@@ -77,7 +79,7 @@ class PBBobj():
         loss_01 = 1-(correct/total)
         return loss_ce, loss_01, outputs
 
-    def bound(self, empirical_risk, kl, train_size, lambda_var=None):
+    def bound(self, empirical_risk, kl, train_size, lambda_var=None, expectation =0.0):
         # compute training objectives
         if self.objective == 'fquad':
             kl = kl * self.kl_penalty
@@ -112,7 +114,11 @@ class PBBobj():
                 trace1 += H.eigenvalues[index][0].sum()
             trace = trace1*trace2*len(H)
             
-            train_obj = train_size * empirical_risk -(1/2) * self.H.logdet()*( 1 + 1/train_size) - 1/(2*(self.sigma_prior**2)* train_size)*(trace + norm)  
+            train_obj = train_size * empirical_risk -(1/2) * self.H.logdet()*( 1 + 1/train_size) - 1/(2*(self.sigma_prior**2)* train_size)*(trace + norm)
+        elif self.objective == 'loss_curvature_bayes':
+            lamb = lambda_var.lamb_scaled
+            train_obj = empirical_risk + lamb*kl
+            print(train_obj)
 
         else:
             raise RuntimeError(f'Wrong objective {self.objective}')
@@ -156,16 +162,19 @@ class PBBobj():
         # compute train objective and return all metrics
         outputs = torch.zeros(target.size(0), self.classes).to(self.device)
         kl = net.compute_kl()
+        expectation = net.compute_expectation(self.laplace, mc_samples= self.mc_samples)
         loss_ce, loss_01, outputs = self.compute_losses(net,
                                                         input, target, clamping)
 
-        train_obj = self.bound(loss_ce, kl, self.n_posterior, lambda_var)
+        train_obj = self.bound(loss_ce, kl, self.n_posterior, lambda_var, expectation = expectation)
         return train_obj, kl/self.n_posterior, outputs, loss_ce, loss_01
 
     def compute_final_stats_risk(self, net, input=None, target=None, data_loader=None, clamping=True, lambda_var=None):
         # compute all final stats and risk certificates
 
         kl = net.compute_kl()
+
+        expectation = net.compute_expectation(self.laplace, mc_samples= self.mc_samples)
         if data_loader:
             error_ce, error_01 = self.mcsampling(net, input, target, batches=True,
                                                  clamping=True, data_loader=data_loader)
@@ -178,7 +187,7 @@ class PBBobj():
         empirical_risk_01 = inv_kl(
             error_01, np.log(2/self.delta_test)/self.mc_samples)
 
-        train_obj = self.bound(empirical_risk_ce, kl, self.n_posterior, lambda_var)
+        train_obj = self.bound(empirical_risk_ce, kl, self.n_posterior, lambda_var, expectation = expectation)
 
         risk_ce = inv_kl(empirical_risk_ce, (kl + np.log((2 *
                                                              np.sqrt(self.n_bound))/self.delta_test))/self.n_bound)

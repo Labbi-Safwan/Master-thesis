@@ -14,7 +14,7 @@ def custom_weights(model, parameter):
     total = 0
     for layer in model.children():
         num_parameter_layer = torch.prod(torch.tensor(layer.weight.size()),0)
-        number_bias = torch.tensor(layer.weight.size())[0].item()
+        number_bias = torch.tensor(layer.bias.size())[0].item()
         weight = parameter[total:total + num_parameter_layer]
         layer.weight = torch.nn.Parameter(torch.reshape(weight ,list(layer.weight.size())))
         total += num_parameter_layer
@@ -688,7 +688,8 @@ class ProbNNet4l(nn.Module):
         return self.l1.kl_div + self.l2.kl_div + self.l3.kl_div + self.l4.kl_div
 
 
-class ProbCNNet4l(nn.Module):
+class ProbCNNet4l_no_activation(nn.Module):
+    
     """Implementation of a Probabilistic Convolutional Neural Network with 4 layers
     (used for the experiments on MNIST so it assumes a specific input size,
     number of classes and kernel size).
@@ -713,7 +714,7 @@ class ProbCNNet4l(nn.Module):
 
     def __init__(self, rho_prior, prior_dist='gaussian', device='cuda', init_net=None):
         super().__init__()
-
+        
         self.conv1 = ProbConv2d(
             1, 32, 3, rho_prior, prior_dist=prior_dist, device=device, init_layer=init_net.conv1 if init_net else None)
         self.conv2 = ProbConv2d(
@@ -722,7 +723,70 @@ class ProbCNNet4l(nn.Module):
                               device=device, init_layer=init_net.fc1 if init_net else None)
         self.fc2 = ProbLinear(128, 10, rho_prior, prior_dist=prior_dist,
                               device=device, init_layer=init_net.fc2 if init_net else None)
+        
+    def forward(self, x, sample=False, clamping=True, pmin=1e-4):
+        # forward pass for the network
+        x = F.relu(self.conv1(x, sample))
+        x = F.relu(self.conv2(x, sample))
+        x = F.max_pool2d(x, 2)
+        x = torch.flatten(x, 1)
+        x = F.relu(self.fc1(x, sample))
+        x = self.fc2(x, sample)
+        return x
+    
+    def compute_kl(self):
+        # KL as a sum of the KL for each individual layer
+        return self.conv1.kl_div + self.conv2.kl_div + self.fc1.kl_div + self.fc2.kl_div
+    
+    def compute_expectation(self, laplace, mc_samples):
+        # compute the expectation of the PAC Bayes loss curvature loss
+        expectation = 0.0
+        for i in range(mc_samples):
+            mu = torch.cat((self.conv1.weight.sample().reshape(-1), self.conv1.bias.sample().reshape(-1),
+                            self.conv2.weight.sample().reshape(-1), self.conv2.bias.sample().reshape(-1),
+                            self.fc1.weight.sample().reshape(-1), self.fc1.bias.sample().reshape(-1), self.fc2.weight.sample().reshape(-1),
+                            self.fc2.bias.sample().reshape(-1)))
+            SW = laplace.posterior_precision.bmm(mu, exponent=1)
+            product =  torch.dot(mu, SW)
+            expectation += product
+        return expectation/mc_samples
+    
+class ProbCNNet4l(nn.Module):
+    
+    """Implementation of a Probabilistic Convolutional Neural Network with 4 layers
+    (used for the experiments on MNIST so it assumes a specific input size,
+    number of classes and kernel size).
 
+    Parameters
+    ----------
+    rho_prior : float
+        prior scale hyperparmeter (to initialise the scale of
+        the posterior)
+
+    prior_dist : string
+        string that indicates the type of distribution for the
+        prior and posterior
+
+    device : string
+        Device the code will run in (e.g. 'cuda')
+
+    init_net : CNNet object
+        Network object used to initialise the prior
+
+    """
+
+    def __init__(self, rho_prior, prior_dist='gaussian', device='cuda', init_net=None):
+        super().__init__()
+        
+        self.conv1 = ProbConv2d(
+            1, 32, 3, rho_prior, prior_dist=prior_dist, device=device, init_layer=init_net.conv1 if init_net else None)
+        self.conv2 = ProbConv2d(
+            32, 64, 3, rho_prior, prior_dist=prior_dist, device=device, init_layer=init_net.conv2 if init_net else None)
+        self.fc1 = ProbLinear(9216, 128, rho_prior, prior_dist=prior_dist,
+                              device=device, init_layer=init_net.fc1 if init_net else None)
+        self.fc2 = ProbLinear(128, 10, rho_prior, prior_dist=prior_dist,
+                              device=device, init_layer=init_net.fc2 if init_net else None)
+        
     def forward(self, x, sample=False, clamping=True, pmin=1e-4):
         # forward pass for the network
         x = F.relu(self.conv1(x, sample))
@@ -732,12 +796,24 @@ class ProbCNNet4l(nn.Module):
         x = F.relu(self.fc1(x, sample))
         x = output_transform(self.fc2(x, sample), clamping, pmin)
         return x
-
+    
     def compute_kl(self):
         # KL as a sum of the KL for each individual layer
         return self.conv1.kl_div + self.conv2.kl_div + self.fc1.kl_div + self.fc2.kl_div
-
-
+    
+    def compute_expectation(self, laplace, mc_samples):
+        # compute the expectation of the PAC Bayes loss curvature loss
+        expectation = 0.0
+        for i in range(mc_samples):
+            mu = torch.cat((self.conv1.weight.sample().reshape(-1), self.conv1.bias.sample().reshape(-1),
+                            self.conv2.weight.sample().reshape(-1), self.conv2.bias.sample().reshape(-1),
+                            self.fc1.weight.sample().reshape(-1), self.fc1.bias.sample().reshape(-1), self.fc2.weight.sample().reshape(-1),
+                            self.fc2.bias.sample().reshape(-1)))
+            SW = laplace.posterior_precision.bmm(mu, exponent=1)
+            product =  torch.dot(mu, SW)
+            expectation += product
+        return expectation/mc_samples
+    
 class CNNet9l(nn.Module):
     """Implementation of a Convolutional Neural Network with 9 layers
     (used for the experiments on CIFAR-10 so it assumes a specific input size,
@@ -863,6 +939,7 @@ class ProbCNNet9l(nn.Module):
         # KL as a sum of the KL for each individual layer
         return self.conv1.kl_div + self.conv2.kl_div + self.conv3.kl_div + self.conv4.kl_div + self.conv5.kl_div + self.conv6.kl_div + self.fcl1.kl_div + self.fcl2.kl_div + self.fcl3.kl_div
 
+    
 
 class CNNet13l(nn.Module):
     """Implementation of a Convolutional Neural Network with 13 layers
@@ -1293,8 +1370,7 @@ def trainNNet(net, optimizer, epoch, train_loader, device='cuda', verbose=False)
     if verbose:
         print(
             f"-Epoch {epoch :.5f}, Train loss: {avgloss/batch_id :.5f}, Train err:  {1-(correct/total):.5f}")
-
-
+        
         
 def testNNet_cross_entropy(net, test_loader, device='cuda', verbose=True):
     """Test function for a standard NN (including CNN)
@@ -1387,7 +1463,7 @@ def nll_loss_NNet_train_set(net, test_loader, device='cuda', verbose=True):
             loss += F.nll_loss(outputs, target)
     return loss
 
-def nll_loss_NNet_test_set(net, test_loader, device='cuda', verbose=True):
+def cross_entropy_loss_NNet_test_set(net, test_loader, device='cuda', verbose=True):
     """compute the nll loss for a for a standard NN on the test set (including CNN)
 
     Parameters
@@ -1397,13 +1473,11 @@ def nll_loss_NNet_test_set(net, test_loader, device='cuda', verbose=True):
 
     test_loader: DataLoader object
         Test data loader
-
     device : string
         Device the code will run in (e.g. 'cuda')
 
     verbose: bool
         Whether to print test metrics
-
     """
     net.eval()
     correct, total,loss = 0, 0.0 ,0.0
@@ -1411,7 +1485,7 @@ def nll_loss_NNet_test_set(net, test_loader, device='cuda', verbose=True):
         for data, target in test_loader:
             data, target = data.to(device), target.to(device)
             outputs = net(data)
-            loss += F.nll_loss(outputs, target)
+            loss += F.cross_entropy(outputs, target)
     return loss
 
 
@@ -1452,7 +1526,7 @@ def trainPNNet(net, optimizer, pbobj, epoch, train_loader, lambda_var=None, opti
     # variables that keep information about the results of optimising the bound
     avgerr, avgbound, avgkl, avgloss = 0.0, 0.0, 0.0, 0.0
 
-    if pbobj.objective == 'flamb':
+    if pbobj.objective == 'flamb' or pbobj.objective == 'loss_curvature_bayes' :
         lambda_var.train()
         # variables that keep information about the results of optimising lambda (only for flamb)
         avgerr_l, avgbound_l, avgkl_l, avgloss_l = 0.0, 0.0, 0.0, 0.0
@@ -1475,7 +1549,7 @@ def trainPNNet(net, optimizer, pbobj, epoch, train_loader, lambda_var=None, opti
         avgloss += loss.item()
         avgerr += err
 
-        if pbobj.objective == 'flamb':
+        if pbobj.objective == 'flamb' or pbobj.objective =='loss_curvature_bayes':
             # for flamb we also need to optimise the lambda variable
             lambda_var.zero_grad()
             bound_l, kl_l, _, loss_l, err_l = pbobj.train_obj(
@@ -1491,7 +1565,7 @@ def trainPNNet(net, optimizer, pbobj, epoch, train_loader, lambda_var=None, opti
         # show the average of the metrics during the epoch
         print(
             f"-Batch average epoch {epoch :.0f} results, Train obj: {avgbound/batch_id :.5f}, KL/n: {avgkl/batch_id :.5f}, NLL loss: {avgloss/batch_id :.5f}, Train 0-1 Error:  {avgerr/batch_id :.5f}")
-        if pbobj.objective == 'flamb':
+        if pbobj.objective == 'flamb' or pbobj.objective == 'loss_curvature_bayes':
             print(
                 f"-After optimising lambda: Train obj: {avgbound_l/batch_id :.5f}, KL/n: {avgkl_l/batch_id :.5f}, NLL loss: {avgloss_l/batch_id :.5f}, Train 0-1 Error:  {avgerr_l/batch_id :.5f}, last lambda value: {lambda_var.lamb_scaled.item() :.5f}")
 
